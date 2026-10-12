@@ -1,0 +1,18 @@
+Rules
+Team Size: Each team can have 3 to 5 members, with one designated team leader.
+Registration: All team members must register individually using their WhatsApp numbers.
+Team Composition: Teams can be formed across different years and specializations—collaboration is encouraged.
+Participation Rule: A student may participate in only one team throughout the hackathon.
+Guidelines
+Prepare Ahead: Familiarize yourself with Google Cloud Services and tools before the event to maximize productivity during the hackathon. Bonus points are awarded for using Google Cloud Services.
+Collaboration Tools: Use version control (e.g., GitHub) and communication tools to stay organized and efficient as a team.
+Time Management: Plan your project carefully, allocating time for brainstorming, coding, testing, and final submission.
+Resource Usage: Use publicly available APIs, libraries, and tools, but ensure you follow all licensing and attribution requirements.
+Project Presentation: Focus on clarity and usability when presenting your project to judges—highlight the problem, solution, and technical complexity
+
+Judging Criteria
+Functionality (40%):How well does the project work? Are the key features implemented and functional?
+User Experience (20%):Is the solution user-friendly and intuitive? Does the interface enhance usability?
+Technical Complexity (20%):How technically advanced is the solution? What technologies and frameworks were used? Bonus marks would be awarded if solution is implemented through Google Cloud Platform.
+Innovation (10%):Is the solution original and innovative? Does it offer a novel approach to solving the problem?
+Presentation (10%):How well is the project presented? Is the problem and solution clearly articulated?

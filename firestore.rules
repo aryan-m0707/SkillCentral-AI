@@ -1,0 +1,48 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper function to verify authenticated owner
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    // User profile and subcollections rule
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+
+      match /sectors/{sectorId} {
+        allow read, write: if isOwner(userId);
+      }
+      match /skills/{skillId} {
+        allow read, write: if isOwner(userId);
+      }
+      match /topics/{topicId} {
+        allow read, write: if isOwner(userId);
+      }
+      match /resources/{resourceId} {
+        allow read, write: if isOwner(userId);
+      }
+      match /notes/{noteId} {
+        allow read, write: if isOwner(userId);
+      }
+      match /tasks/{taskId} {
+        allow read, write: if isOwner(userId);
+      }
+      match /quizzes/{quizId} {
+        allow read, write: if isOwner(userId);
+      }
+      match /quizAttempts/{attemptId} {
+        allow read, write: if isOwner(userId);
+      }
+      match /studySessions/{sessionId} {
+        allow read, write: if isOwner(userId);
+      }
+      match /activityEvents/{eventId} {
+        allow read, write: if isOwner(userId);
+      }
+      match /chats/{chatId} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+  }
+}
