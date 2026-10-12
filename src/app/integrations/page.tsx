@@ -19,6 +19,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { StorageEngine } from '@/lib/storage';
+import { ApiKeysModal } from '@/components/api-keys-modal';
 
 function IntegrationsContent() {
   const searchParams = useSearchParams();
@@ -30,6 +31,7 @@ function IntegrationsContent() {
   const [status, setStatus] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [disconnecting, setDisconnecting] = useState(false);
+  const [isApiKeysModalOpen, setIsApiKeysModalOpen] = useState(false);
 
   const fetchStatus = async () => {
     setIsLoading(true);
@@ -78,10 +80,21 @@ function IntegrationsContent() {
           </p>
         </div>
 
-        <Button variant="outline" size="sm" onClick={fetchStatus} isLoading={isLoading}>
-          <RefreshCw className="w-3.5 h-3.5" />
-          <span>Refresh Diagnostics</span>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => setIsApiKeysModalOpen(true)}
+            className="text-xs bg-[#6658F5]"
+          >
+            <Key className="w-3.5 h-3.5" />
+            <span>Enter / Update API Keys</span>
+          </Button>
+          <Button variant="outline" size="sm" onClick={fetchStatus} isLoading={isLoading}>
+            <RefreshCw className="w-3.5 h-3.5" />
+            <span>Refresh Diagnostics</span>
+          </Button>
+        </div>
       </div>
 
       {/* OAuth Callback Notice */}
@@ -180,7 +193,9 @@ function IntegrationsContent() {
                   <Sparkles className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-sm text-[#17243D]">Google Gemini 2.5 API</h3>
+                  <h3 className="font-bold text-sm text-[#17243D]">
+                    Google Gemini API ({status?.gemini?.model || 'gemini-3.7-flash'})
+                  </h3>
                   <p className="text-xs text-[#718096]">Official @google/genai SDK</p>
                 </div>
               </div>
@@ -190,7 +205,7 @@ function IntegrationsContent() {
             </div>
 
             <p className="text-xs text-[#4A5568] leading-relaxed">
-              Powers multimodal YouTube learning extraction, grounded notes Q&amp;A citations, and interactive study roadmap generation. Model: <code>{status?.gemini?.model || 'gemini-2.5-flash'}</code>.
+              Powers multimodal YouTube learning extraction, grounded notes Q&amp;A citations, and interactive study roadmap generation. Active Model: <code>{status?.gemini?.model || 'gemini-3.7-flash'}</code>.
             </p>
 
             <div className="p-3 bg-[#F6F8FC] rounded-xl text-[11px] text-[#718096] space-y-1">
@@ -202,9 +217,17 @@ function IntegrationsContent() {
           </div>
 
           <div className="mt-6 pt-4 border-t border-[#F0F2FA] flex items-center justify-between text-xs text-[#718096]">
-            <span>ENV: <code>GEMINI_API_KEY</code></span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsApiKeysModalOpen(true)}
+              className="text-xs text-[#6658F5] border-[#6658F5]/30 hover:bg-[#6658F5]/10"
+            >
+              <Key className="w-3.5 h-3.5" />
+              <span>Configure API Key &amp; Model</span>
+            </Button>
             <a
-              href="https://aistudio.google.com/"
+              href="https://aistudio.google.com/app/apikey"
               target="_blank"
               rel="noreferrer"
               className="text-[#6658F5] hover:underline flex items-center gap-1 font-semibold"
@@ -271,6 +294,12 @@ function IntegrationsContent() {
           </div>
         </Card>
       </div>
+
+      <ApiKeysModal
+        isOpen={isApiKeysModalOpen}
+        onClose={() => setIsApiKeysModalOpen(false)}
+        onConfigUpdated={fetchStatus}
+      />
     </AppShell>
   );
 }

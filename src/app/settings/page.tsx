@@ -8,7 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { StorageEngine } from '@/lib/storage';
 import { UserProfile } from '@/types';
-import { Settings, User, RotateCcw, Trash2, CheckCircle2, ShieldAlert } from 'lucide-react';
+import { Settings, User, RotateCcw, Trash2, CheckCircle2, ShieldAlert, Key, Sparkles } from 'lucide-react';
+import { ApiKeysModal } from '@/components/api-keys-modal';
 
 export default function SettingsPage() {
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -17,6 +18,7 @@ export default function SettingsPage() {
   const [timezone, setTimezone] = useState('');
   const [demoMode, setDemoMode] = useState(true);
   const [savedStatus, setSavedStatus] = useState<string | null>(null);
+  const [isApiKeysModalOpen, setIsApiKeysModalOpen] = useState(false);
 
   useEffect(() => {
     const u = StorageEngine.getCurrentUser();
@@ -126,6 +128,34 @@ export default function SettingsPage() {
 
         {/* Demo & Storage Data Controls (1 col) */}
         <div className="space-y-6">
+          {/* API Keys Configuration Card */}
+          <Card className="p-6 space-y-4 border-[#6658F5]/30 bg-gradient-to-br from-white to-[#F8F7FF]">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-[#6658F5]/10 text-[#6658F5] flex items-center justify-center">
+                <Key className="w-4 h-4" />
+              </div>
+              <div>
+                <CardTitle className="text-sm">API Keys &amp; AI Model</CardTitle>
+                <CardDescription>Configure Gemini API Key &amp; model</CardDescription>
+              </div>
+            </div>
+
+            <p className="text-xs text-[#4A5568] leading-relaxed">
+              Set your Google AI Studio Gemini API Key and switch models (e.g. <strong>Gemini 3.7 Flash</strong>) without manually editing files.
+            </p>
+
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              onClick={() => setIsApiKeysModalOpen(true)}
+              className="w-full text-xs"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Configure Gemini Key &amp; Model</span>
+            </Button>
+          </Card>
+
           <Card className="p-6 space-y-4">
             <CardTitle className="text-base">Demo Data Controls</CardTitle>
             <CardDescription>
@@ -160,7 +190,7 @@ export default function SettingsPage() {
               Privacy &amp; Data Safety
             </h4>
             <p className="text-xs text-indigo-900 leading-relaxed">
-              SkillCentral does not share user notes with any third-party advertising networks. Grounded Q&amp;A calls send text strictly over authenticated server-side routes to the Gemini 2.5 API.
+              SkillCentral does not share user notes with any third-party advertising networks. Grounded Q&amp;A calls send text strictly over authenticated server-side routes to the Google Gemini API (Gemini 3.7 Flash).
             </p>
           </Card>
         </div>

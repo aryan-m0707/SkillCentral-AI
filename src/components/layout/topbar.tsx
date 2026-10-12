@@ -11,6 +11,7 @@ import {
   PlugZap,
   CheckCircle2,
   AlertCircle,
+  Key,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -22,6 +23,7 @@ interface TopbarProps {
   onOpenTimer: () => void;
   onOpenMobileMenu: () => void;
   onResetDemoData: () => void;
+  onOpenApiKeys: () => void;
 }
 
 export function Topbar({
@@ -30,6 +32,7 @@ export function Topbar({
   onOpenTimer,
   onOpenMobileMenu,
   onResetDemoData,
+  onOpenApiKeys,
 }: TopbarProps) {
   return (
     <header className="h-16 bg-white border-b border-[#E6EAF2] px-4 md:px-8 flex items-center justify-between shrink-0 z-20">
@@ -85,6 +88,17 @@ export function Topbar({
         >
           <Timer className="w-3.5 h-3.5 text-[#20C997]" />
           <span>Timer</span>
+        </Button>
+
+        {/* API Keys Configuration Button */}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onOpenApiKeys}
+          className="inline-flex text-xs text-[#17243D] border-[#E6EAF2] hover:border-[#6658F5] hover:text-[#6658F5] hover:bg-purple-50/50"
+        >
+          <Key className="w-3.5 h-3.5 text-[#6658F5]" />
+          <span>API Keys</span>
         </Button>
 
         {/* Global Quick Capture CTA */}

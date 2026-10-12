@@ -129,7 +129,7 @@ export const DEMO_SKILLS: Skill[] = [
     id: 'skill-ml',
     sectorId: 'sec-specialization',
     title: 'LLM Fine-Tuning & Multi-Agent Architecture',
-    description: 'Gemini 2.5 Flash, RAG pipeline construction, and evaluation metrics.',
+    description: 'Gemini 3.7 Flash, RAG pipeline construction, and evaluation metrics.',
     userId: DEMO_USER_ID,
   },
   {
@@ -171,17 +171,17 @@ export const DEMO_NOTES: Note[] = [
     sectorId: 'sec-specialization',
     skillId: 'skill-ml',
     topicId: 'topic-gemini-sdk',
-    title: 'Gemini 2.5 Flash Multimodal Ingestion Patterns',
-    content: `# Gemini 2.5 Flash Multimodal Ingestion Patterns
+    title: 'Gemini 3.7 Flash Multimodal Ingestion Patterns',
+    content: `# Gemini 3.7 Flash Multimodal Ingestion Patterns
     
 ## Core Architecture
-The official \`@google/genai\` SDK supports sending direct public video references and structured JSON schema generation.
+The official \`@google/genai\` SDK supports sending direct public video references, structured JSON schema generation, and hybrid reasoning tokens via Gemini 3.7 Flash.
 
 ### Key Guidelines
 - Always validate outputs server-side using strict schema parsing.
 - Provide honest fallback routes if quota or regional video tokens are restricted.
 - Use explicit chunk references when citing note bodies for grounded Q&A.
-- Keep prompt tokens focused by extracting relevant summaries before synthesis.`,
+- Leverage Gemini 3.7 Flash's reasoning capabilities for complex summarization and quiz generation.`,
     tags: ['Gemini', 'GoogleCloud', 'AI', 'Architecture'],
     userId: DEMO_USER_ID,
     createdAt: daysAgoIso(2),

@@ -6,6 +6,7 @@ import { Topbar } from '@/components/layout/topbar';
 import { QuickCaptureModal } from '@/components/quick-capture-modal';
 import { ManageSectorsModal } from '@/components/manage-sectors-modal';
 import { StudyTimerModal } from '@/components/study-timer-modal';
+import { ApiKeysModal } from '@/components/api-keys-modal';
 import { StorageEngine } from '@/lib/storage';
 import { Sector, UserProfile } from '@/types';
 import { X } from 'lucide-react';
@@ -16,6 +17,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [isQuickCaptureOpen, setIsQuickCaptureOpen] = useState(false);
   const [isManageSectorsOpen, setIsManageSectorsOpen] = useState(false);
   const [isTimerOpen, setIsTimerOpen] = useState(false);
+  const [isApiKeysOpen, setIsApiKeysOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -105,6 +107,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           onOpenTimer={() => setIsTimerOpen(true)}
           onOpenMobileMenu={() => setIsMobileMenuOpen(true)}
           onResetDemoData={handleResetDemoData}
+          onOpenApiKeys={() => setIsApiKeysOpen(true)}
         />
 
         {/* Roomy Main Canvas */}
@@ -139,6 +142,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         onClose={() => setIsTimerOpen(false)}
         sectors={sectors}
         onSessionLogged={() => {
+          setRefreshKey((k) => k + 1);
+        }}
+      />
+
+      {/* API Keys & Model Config Modal */}
+      <ApiKeysModal
+        isOpen={isApiKeysOpen}
+        onClose={() => setIsApiKeysOpen(false)}
+        onConfigUpdated={() => {
           setRefreshKey((k) => k + 1);
         }}
       />
