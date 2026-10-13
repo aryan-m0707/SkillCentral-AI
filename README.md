@@ -63,12 +63,12 @@ graph TD
    - Interactive quiz runner with instant scoring, feedback, and celebratory confetti.
    - 1-click **Save to Vault** and **Add Tasks to Planner**.
 
-4. **Planner & Google Tasks Synchronization**
+4. **Planner & Google Tasks Read-Only Integration**
    - Built-in task CRUD works standalone without OAuth.
    - Today, Week, and Upcoming calendar views with local time-block scheduling (`10:00 - 11:30`).
-   - Full server-side **Google OAuth 2.0 authorization-code flow** with CSRF state protection.
-   - Push tasks via `tasks.insert` and sync status via `tasks.patch`.
-   - **Architectural safeguard**: Google Tasks API discards time-of-day (date-only); SkillCentral owns granular time blocks so no schedule fidelity is lost.
+   - Server-side **Google OAuth 2.0 authorization-code flow** with secure random CSRF protection and automatic token refresh.
+   - Read-only synchronization via `tasks.readonly` scope: live paginated task-list and task browsing.
+   - **Architectural safeguard**: Integration is strictly read-only (`push_task` and `patch_task` disabled) to ensure external Google Tasks are never modified or deleted by SkillCentral. Local scheduling operates with full fidelity.
 
 5. **AI Learning Coach**
    - Usable chat interface with 6 specialized modes: *Explain Simply*, *Brainstorm*, *Make Study Plan*, *Quiz Me*, *Summarize Sources*, and *Explain My Progress*.
@@ -150,7 +150,7 @@ Open **[http://localhost:3000](http://localhost:3000)** in your browser.
 ```bash
 npm test
 ```
-Runs 12 unit tests covering YouTube URL extraction, streak calculation, quiz accuracy, and Google Tasks RFC 3339 date mapping.
+Runs 14 unit tests covering YouTube URL extraction, streak calculation, quiz accuracy, and Google Tasks read-only OAuth, CSRF security, write disabling, and pagination.
 
 ---
 
@@ -165,12 +165,12 @@ Runs 12 unit tests covering YouTube URL extraction, streak calculation, quiz acc
 1. In [Google Cloud Console](https://console.cloud.google.com/), enable the **Google Tasks API**.
 2. Go to **APIs & Services → OAuth consent screen**:
    - User Type: **External**
-   - Scopes: Add `https://www.googleapis.com/auth/tasks`
+   - Scopes: Add `https://www.googleapis.com/auth/tasks.readonly` and `https://www.googleapis.com/auth/userinfo.email`
    - Test Users: Add your personal Gmail account (required while app is in testing).
 3. Go to **APIs & Services → Credentials**:
    - Create Credentials → **OAuth client ID** → Application type: **Web application**.
    - Authorized redirect URIs: `http://localhost:3000/api/integrations/google-tasks/callback` (and your Cloud Run URL in production).
-4. Paste the Client ID and Client Secret into `.env.local`.
+4. Save the Client ID and Client Secret into `.env.local`.
 
 ### 3. Deploying to Google Cloud Run
 

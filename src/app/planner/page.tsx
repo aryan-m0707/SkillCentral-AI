@@ -22,12 +22,15 @@ import {
   Calendar,
   AlertCircle,
   Filter,
+  ListTodo,
 } from 'lucide-react';
 import { cn, formatDate } from '@/lib/utils';
+import { GoogleTasksView } from '@/components/google-tasks-view';
 
 export default function PlannerPage() {
   const [sectors, setSectors] = useState<Sector[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [plannerMode, setPlannerMode] = useState<'schedule' | 'google-tasks'>('schedule');
   const [activeView, setActiveView] = useState<'today' | 'week' | 'upcoming'>('today');
   const [filterSectorId, setFilterSectorId] = useState<string>('');
   const [todayStr, setTodayStr] = useState('');
@@ -44,8 +47,6 @@ export default function PlannerPage() {
 
   // Google Tasks Integration State
   const [googleTasksConnected, setGoogleTasksConnected] = useState(false);
-  const [syncingTaskId, setSyncingTaskId] = useState<string | null>(null);
-  const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
 
   const loadData = () => {
     const s = StorageEngine.getSectors();
@@ -70,11 +71,11 @@ export default function PlannerPage() {
     loadData();
   }, []);
 
-  const handleToggleTaskStatus = async (task: Task) => {
+  const handleToggleTaskStatus = (task: Task) => {
     const isCompleted = task.status === 'completed';
     const nextStatus = isCompleted ? 'todo' : 'completed';
 
-    const updated = StorageEngine.saveTask({
+    StorageEngine.saveTask({
       id: task.id,
       title: task.title,
       sectorId: task.sectorId,
@@ -82,24 +83,6 @@ export default function PlannerPage() {
     });
 
     loadData();
-
-    // If linked to Google Tasks and user is connected, sync the status patch!
-    if (task.externalTaskId && googleTasksConnected) {
-      try {
-        await fetch('/api/integrations/google-tasks/sync', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            action: 'patch_task',
-            taskId: task.externalTaskId,
-            tasklistId: task.externalListId || '@default',
-            completed: !isCompleted,
-          }),
-        });
-      } catch (e) {
-        console.warn('Status patch to Google Tasks failed:', e);
-      }
-    }
   };
 
   const handleCreateTask = (e: React.FormEvent) => {
@@ -126,48 +109,6 @@ export default function PlannerPage() {
   const handleDeleteTask = (id: string) => {
     StorageEngine.deleteTask(id);
     loadData();
-  };
-
-  // Push individual task to Google Tasks
-  const handlePushToGoogleTasks = async (task: Task) => {
-    setSyncingTaskId(task.id);
-    setSyncFeedback(null);
-    try {
-      const res = await fetch('/api/integrations/google-tasks/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'push_task',
-          task: {
-            title: task.title,
-            details: task.details,
-            dueDate: task.dueDate,
-          },
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Push failed');
-      }
-
-      // Update local task with external task ID to prevent duplicates!
-      StorageEngine.saveTask({
-        id: task.id,
-        title: task.title,
-        sectorId: task.sectorId,
-        externalTaskId: data.externalTaskId,
-        externalListId: data.externalListId,
-      });
-
-      setSyncFeedback(`Pushed "${task.title}" to Google Tasks!`);
-      loadData();
-    } catch (err: any) {
-      setSyncFeedback(`Error: ${err.message}`);
-    } finally {
-      setSyncingTaskId(null);
-      setTimeout(() => setSyncFeedback(null), 4000);
-    }
   };
 
   // Filter tasks by view and sector
@@ -203,7 +144,34 @@ export default function PlannerPage() {
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Google Tasks Connection Banner */}
+          {/* Mode Switcher */}
+          <div className="flex bg-[#F0F2FA] p-1 rounded-xl">
+            <button
+              onClick={() => setPlannerMode('schedule')}
+              className={cn(
+                'px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer flex items-center gap-1.5',
+                plannerMode === 'schedule'
+                  ? 'bg-white text-[#6658F5] shadow-xs'
+                  : 'text-[#718096] hover:text-[#17243D]'
+              )}
+            >
+              <CalendarCheck className="w-3.5 h-3.5" />
+              <span>Study Planner</span>
+            </button>
+            <button
+              onClick={() => setPlannerMode('google-tasks')}
+              className={cn(
+                'px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer flex items-center gap-1.5',
+                plannerMode === 'google-tasks'
+                  ? 'bg-white text-[#6658F5] shadow-xs'
+                  : 'text-[#718096] hover:text-[#17243D]'
+              )}
+            >
+              <ListTodo className="w-3.5 h-3.5" />
+              <span>Google Tasks (Read-Only)</span>
+            </button>
+          </div>
+
           <Link href="/integrations">
             <Button
               variant={googleTasksConnected ? 'mint' : 'outline'}
@@ -217,27 +185,26 @@ export default function PlannerPage() {
             </Button>
           </Link>
 
-          <Button variant="primary" size="sm" onClick={() => setIsAddingTask(true)}>
-            <Plus className="w-4 h-4" />
-            <span>Add Task</span>
-          </Button>
+          {plannerMode === 'schedule' && (
+            <Button variant="primary" size="sm" onClick={() => setIsAddingTask(true)}>
+              <Plus className="w-4 h-4" />
+              <span>Add Task</span>
+            </Button>
+          )}
         </div>
       </div>
 
-      {syncFeedback && (
-        <div className="p-3 bg-indigo-50 border border-indigo-200 text-indigo-900 rounded-xl text-xs flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4 text-[#6658F5]" />
-          <span>{syncFeedback}</span>
-        </div>
-      )}
-
-      {/* Critical Limitation Banner */}
-      <div className="p-4 bg-amber-50/80 border border-amber-200 rounded-2xl flex items-start gap-3">
-        <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-        <div className="text-xs text-amber-900 leading-relaxed">
-          <span className="font-bold">Google Tasks API Architectural Note:</span> Google Tasks stores calendar date only and discards hours/minutes. SkillCentral strictly owns and preserves accurate local time-block scheduling (e.g. 10:00–11:30) without data loss.
-        </div>
-      </div>
+      {plannerMode === 'google-tasks' ? (
+        <GoogleTasksView />
+      ) : (
+        <>
+          {/* Critical Limitation Banner */}
+          <div className="p-4 bg-amber-50/80 border border-amber-200 rounded-2xl flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+            <div className="text-xs text-amber-900 leading-relaxed">
+              <span className="font-bold">Google Tasks Architectural Note:</span> SkillCentral preserves accurate local time-block scheduling independently. Google Tasks integration is strictly read-only and will never alter your external Google Tasks data.
+            </div>
+          </div>
 
       {/* View Tabs & Sector Filters */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -448,31 +415,12 @@ export default function PlannerPage() {
                             {t.timeBlockStart} {t.timeBlockEnd ? `- ${t.timeBlockEnd}` : ''}
                           </span>
                         )}
-                        {t.externalTaskId && (
-                          <span className="text-[10px] text-[#20C997] font-semibold flex items-center gap-1">
-                            <CheckCircle2 className="w-3 h-3" />
-                            Synced with Google Tasks
-                          </span>
-                        )}
                       </div>
                     </div>
                   </div>
 
                   {/* Row Actions */}
                   <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
-                    {googleTasksConnected && !t.externalTaskId && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handlePushToGoogleTasks(t)}
-                        isLoading={syncingTaskId === t.id}
-                        className="text-xs"
-                      >
-                        <PlugZap className="w-3 h-3 text-[#6658F5]" />
-                        <span>Push to Google Tasks</span>
-                      </Button>
-                    )}
-
                     <button
                       onClick={() => handleDeleteTask(t.id)}
                       className="p-1.5 text-[#94A3B8] hover:text-rose-600 rounded-lg hover:bg-rose-50 cursor-pointer transition-colors"
@@ -487,6 +435,8 @@ export default function PlannerPage() {
           )}
         </div>
       </Card>
-    </AppShell>
+    </>
+  )}
+</AppShell>
   );
 }

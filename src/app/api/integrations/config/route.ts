@@ -60,8 +60,8 @@ export async function GET() {
   return NextResponse.json({
     geminiApiKeyMasked: maskedKey,
     hasGeminiApiKey: Boolean(currentApiKey),
-    geminiModel: process.env.GEMINI_MODEL || env.GEMINI_MODEL || 'gemini-3.7-flash',
-    googleOAuthClientId: process.env.GOOGLE_OAUTH_CLIENT_ID || env.GOOGLE_OAUTH_CLIENT_ID || '',
+    hasGoogleOAuthClientId: Boolean(process.env.GOOGLE_OAUTH_CLIENT_ID || env.GOOGLE_OAUTH_CLIENT_ID),
+    googleOAuthClientId: '',
     hasGoogleOAuthSecret: Boolean(process.env.GOOGLE_OAUTH_CLIENT_SECRET || env.GOOGLE_OAUTH_CLIENT_SECRET),
     demoMode: process.env.DEMO_MODE !== 'false',
     envFilePath: ENV_PATH,

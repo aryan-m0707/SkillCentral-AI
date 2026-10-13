@@ -32,6 +32,12 @@ function IntegrationsContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [disconnecting, setDisconnecting] = useState(false);
   const [isApiKeysModalOpen, setIsApiKeysModalOpen] = useState(false);
+  const [testResults, setTestResults] = useState<{
+    tasklists?: any[];
+    tasks?: any[];
+    loading?: boolean;
+    error?: string;
+  } | null>(null);
 
   const fetchStatus = async () => {
     setIsLoading(true);
@@ -58,11 +64,42 @@ function IntegrationsContent() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'disconnect' }),
       });
+      setTestResults(null);
       fetchStatus();
     } catch (e) {
       console.warn('Disconnect error:', e);
     } finally {
       setDisconnecting(false);
+    }
+  };
+
+  const handleTestTasksRead = async () => {
+    setTestResults({ loading: true });
+    try {
+      const listsRes = await fetch('/api/integrations/google-tasks/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'list_tasklists' }),
+      });
+      const listsData = await listsRes.json();
+      if (!listsRes.ok) throw new Error(listsData.error || 'Failed to list task lists');
+
+      const primaryListId = listsData.tasklists?.[0]?.id || '@default';
+      const tasksRes = await fetch('/api/integrations/google-tasks/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'list_tasks', tasklistId: primaryListId }),
+      });
+      const tasksData = await tasksRes.json();
+      if (!tasksRes.ok) throw new Error(tasksData.error || 'Failed to list tasks');
+
+      setTestResults({
+        tasklists: listsData.tasklists || [],
+        tasks: tasksData.tasks || [],
+        loading: false,
+      });
+    } catch (e: any) {
+      setTestResults({ error: e.message || 'Test read failed', loading: false });
     }
   };
 
@@ -103,10 +140,10 @@ function IntegrationsContent() {
           <CheckCircle2 className="w-5 h-5 text-[#20C997] shrink-0 mt-0.5" />
           <div>
             <p className="text-xs font-bold text-[#138A67]">
-              Google Tasks OAuth Connected Successfully!
+              Google Tasks OAuth Connected Successfully (Read-Only)!
             </p>
             <p className="text-xs text-[#138A67] mt-0.5">
-              Authorized account: {userEmailParam || 'Google Account'}. You can now push study tasks directly to your Google Tasks lists.
+              Authorized account: {userEmailParam || 'Google Account'}. Your Google Tasks lists and items can now be read in the Planner and Dashboard.
             </p>
           </div>
         </div>
@@ -118,7 +155,7 @@ function IntegrationsContent() {
           <div>
             <p className="text-xs font-bold text-rose-900">OAuth Notice: {errorParam}</p>
             <p className="text-xs text-rose-700 mt-0.5">
-              {errorMessageParam || 'Could not complete Google OAuth. Check your GOOGLE_OAUTH_CLIENT_ID and redirect URI.'}
+              {errorMessageParam || 'Could not complete Google OAuth. Verify credentials, consent settings, and redirect URI.'}
             </p>
           </div>
         </div>
@@ -126,7 +163,7 @@ function IntegrationsContent() {
 
       {/* Services Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* 1. Google Tasks OAuth 2.0 */}
+        {/* 1. Google Tasks OAuth 2.0 (Read-Only) */}
         <Card className="p-6 flex flex-col justify-between">
           <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -135,15 +172,29 @@ function IntegrationsContent() {
                   GT
                 </div>
                 <div>
-                  <h3 className="font-bold text-sm text-[#17243D]">Google Tasks REST API</h3>
-                  <p className="text-xs text-[#718096]">Two-way task synchronization</p>
+                  <h3 className="font-bold text-sm text-[#17243D]">Google Tasks REST API (Read-Only)</h3>
+                  <p className="text-xs text-[#718096]">Task-list &amp; task pagination read</p>
                 </div>
               </div>
               <Badge
-                variant={status?.googleTasks?.userConnected ? 'mint' : status?.googleTasks?.oauthConfigured ? 'warning' : 'outline'}
+                variant={
+                  status?.googleTasks?.userConnected
+                    ? 'mint'
+                    : status?.googleTasks?.status === 'expired' || status?.googleTasks?.status === 'revoked'
+                    ? 'danger'
+                    : status?.googleTasks?.status === 'scope_missing'
+                    ? 'warning'
+                    : status?.googleTasks?.oauthConfigured
+                    ? 'warning'
+                    : 'outline'
+                }
               >
                 {status?.googleTasks?.userConnected
-                  ? 'Connected & Authorized'
+                  ? 'Connected (Read-Only)'
+                  : status?.googleTasks?.status === 'expired'
+                  ? 'Session Expired'
+                  : status?.googleTasks?.status === 'scope_missing'
+                  ? 'Tasks Scope Missing'
                   : status?.googleTasks?.oauthConfigured
                   ? 'Keys Configured — Not Signed In'
                   : 'Keys Missing'}
@@ -151,8 +202,15 @@ function IntegrationsContent() {
             </div>
 
             <p className="text-xs text-[#4A5568] leading-relaxed">
-              True server-side authorization-code flow with CSRF protection, secure refresh tokens, and direct push via <code>tasks.insert</code> and <code>tasks.patch</code>.
+              Read-only authorization (<code>tasks.readonly</code>) with secure random CSRF protection and token refresh. Google task write/update operations are strictly disabled.
             </p>
+
+            {status?.googleTasks?.email && (
+              <div className="px-3 py-2 bg-blue-50/70 border border-blue-100 rounded-xl text-xs text-blue-900 flex items-center justify-between">
+                <span className="text-[11px] text-blue-700 font-medium">Authorized Account:</span>
+                <span className="font-semibold text-blue-950 font-mono text-[11px]">{status.googleTasks.email}</span>
+              </div>
+            )}
 
             <div className="p-3 bg-[#F6F8FC] rounded-xl text-[11px] text-[#718096] space-y-1">
               <p className="font-semibold text-[#17243D]">OAuth Redirect URI:</p>
@@ -160,22 +218,74 @@ function IntegrationsContent() {
                 http://localhost:3000/api/integrations/google-tasks/callback
               </code>
             </div>
+
+            {testResults && (
+              <div className="p-3 bg-white border border-[#E6EAF2] rounded-xl text-xs space-y-2">
+                <div className="flex items-center justify-between font-semibold text-[#17243D]">
+                  <span>Live Read Verification:</span>
+                  <button
+                    onClick={() => setTestResults(null)}
+                    className="text-[10px] text-[#718096] hover:text-[#17243D]"
+                  >
+                    Clear
+                  </button>
+                </div>
+                {testResults.loading ? (
+                  <p className="text-[#718096]">Testing task-list and task reads...</p>
+                ) : testResults.error ? (
+                  <p className="text-rose-600">{testResults.error}</p>
+                ) : (
+                  <div className="space-y-1 text-[11px] text-[#4A5568]">
+                    <p className="text-[#138A67] font-semibold flex items-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      API Read Successful!
+                    </p>
+                    <p>
+                      Task Lists: <strong>{testResults.tasklists?.length || 0}</strong> found
+                      {testResults.tasklists?.[0] && ` (Primary: "${testResults.tasklists[0].title}")`}
+                    </p>
+                    <p>
+                      Tasks in Primary: <strong>{testResults.tasks?.length || 0}</strong> items read
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
-          <div className="mt-6 pt-4 border-t border-[#F0F2FA] flex justify-end gap-2">
+          <div className="mt-6 pt-4 border-t border-[#F0F2FA] flex items-center justify-end gap-2 flex-wrap">
             {status?.googleTasks?.userConnected ? (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleDisconnectGoogleTasks}
-                isLoading={disconnecting}
-                className="text-rose-600 border-rose-200 hover:bg-rose-50"
-              >
-                Disconnect Tasks
-              </Button>
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleTestTasksRead}
+                  isLoading={testResults?.loading}
+                  className="text-xs"
+                >
+                  <RefreshCw className="w-3 h-3 text-[#6658F5]" />
+                  <span>Test Task Read</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDisconnectGoogleTasks}
+                  isLoading={disconnecting}
+                  className="text-rose-600 border-rose-200 hover:bg-rose-50 text-xs"
+                >
+                  Disconnect Tasks
+                </Button>
+              </>
+            ) : status?.googleTasks?.status === 'expired' || status?.googleTasks?.status === 'scope_missing' ? (
+              <a href="/api/integrations/google-tasks/connect">
+                <Button variant="primary" size="sm" className="text-xs bg-amber-600 hover:bg-amber-700">
+                  <PlugZap className="w-3.5 h-3.5" />
+                  <span>Reconnect Google Tasks</span>
+                </Button>
+              </a>
             ) : (
               <a href="/api/integrations/google-tasks/connect">
-                <Button variant="primary" size="sm">
+                <Button variant="primary" size="sm" className="text-xs">
                   <PlugZap className="w-3.5 h-3.5" />
                   <span>Connect with Google Tasks</span>
                 </Button>

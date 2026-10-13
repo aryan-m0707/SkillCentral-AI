@@ -1,20 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthorizationUrl, isGoogleOAuthConfigured } from '@/lib/server/google-tasks';
+import {
+  getAuthorizationUrl,
+  isGoogleOAuthConfigured,
+  generateOAuthState,
+} from '@/lib/server/google-tasks';
 
 export async function GET(req: NextRequest) {
   if (!isGoogleOAuthConfigured()) {
-    // Return informative redirect to Integrations page
     const url = new URL('/integrations', req.url);
     url.searchParams.set('error', 'oauth_credentials_missing');
     url.searchParams.set(
       'message',
-      'GOOGLE_OAUTH_CLIENT_ID and GOOGLE_OAUTH_CLIENT_SECRET are not set in .env.local.'
+      'GOOGLE_OAUTH_CLIENT_ID and GOOGLE_OAUTH_CLIENT_SECRET are not configured.'
     );
     return NextResponse.redirect(url);
   }
 
-  // Generate random CSRF state
-  const state = Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
+  // Generate cryptographically secure CSRF state
+  const state = generateOAuthState();
   const authUrl = getAuthorizationUrl(state);
 
   if (!authUrl) {
@@ -24,7 +27,7 @@ export async function GET(req: NextRequest) {
   }
 
   const response = NextResponse.redirect(authUrl);
-  // Store CSRF state in secure cookie
+  // Store CSRF state in secure HTTP-only cookie
   response.cookies.set('google_oauth_state', state, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',

@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { exchangeCodeForTokens, getOAuthClient } from '@/lib/server/google-tasks';
+import {
+  exchangeCodeForTokens,
+  getOAuthClient,
+  verifyTasksScope,
+} from '@/lib/server/google-tasks';
 import { google } from 'googleapis';
 
 export async function GET(req: NextRequest) {
@@ -11,26 +15,46 @@ export async function GET(req: NextRequest) {
   const destinationUrl = new URL('/integrations', req.url);
 
   if (error) {
-    destinationUrl.searchParams.set('error', error);
+    destinationUrl.searchParams.set('error', error === 'access_denied' ? 'access_denied' : 'oauth_error');
+    destinationUrl.searchParams.set(
+      'message',
+      error === 'access_denied'
+        ? 'Consent was denied or cancelled.'
+        : 'Google authorization failed.'
+    );
     return NextResponse.redirect(destinationUrl);
   }
 
   if (!code) {
     destinationUrl.searchParams.set('error', 'no_code_provided');
+    destinationUrl.searchParams.set('message', 'No authorization code received.');
     return NextResponse.redirect(destinationUrl);
   }
 
-  // Validate state
+  // Validate CSRF state
   const storedState = req.cookies.get('google_oauth_state')?.value;
   if (!state || state !== storedState) {
     destinationUrl.searchParams.set('error', 'csrf_state_mismatch');
+    destinationUrl.searchParams.set('message', 'CSRF validation failed. Please try connecting again.');
     return NextResponse.redirect(destinationUrl);
   }
 
   try {
     const tokens = await exchangeCodeForTokens(code);
 
-    // Fetch user email for display
+    // Verify that granted scopes include Google Tasks read access
+    if (tokens.scope && !verifyTasksScope(tokens.scope)) {
+      destinationUrl.searchParams.set('error', 'missing_tasks_scope');
+      destinationUrl.searchParams.set(
+        'message',
+        'Google Tasks read-only scope was not granted. Please re-authorize and check the Tasks box.'
+      );
+      const response = NextResponse.redirect(destinationUrl);
+      response.cookies.delete('google_oauth_state');
+      return response;
+    }
+
+    // Safely retrieve user email for display
     let userEmail = 'Google Account';
     try {
       const oauth2Client = getOAuthClient();
@@ -43,7 +67,7 @@ export async function GET(req: NextRequest) {
         }
       }
     } catch {
-      // Ignore userinfo failure if scope was restricted
+      // Ignore userinfo failure
     }
 
     destinationUrl.searchParams.set('connected', 'true');
@@ -62,10 +86,14 @@ export async function GET(req: NextRequest) {
 
     response.cookies.delete('google_oauth_state');
     return response;
-  } catch (err: any) {
-    console.error('[GoogleTasks/callback] Token exchange error:', err);
+  } catch {
     destinationUrl.searchParams.set('error', 'token_exchange_failed');
-    destinationUrl.searchParams.set('message', err.message || 'Failed to exchange tokens');
-    return NextResponse.redirect(destinationUrl);
+    destinationUrl.searchParams.set(
+      'message',
+      'Failed to exchange authorization code for credentials. Please verify client settings and try again.'
+    );
+    const response = NextResponse.redirect(destinationUrl);
+    response.cookies.delete('google_oauth_state');
+    return response;
   }
 }

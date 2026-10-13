@@ -33,12 +33,15 @@ import {
   Calendar,
   AlertCircle,
   Lightbulb,
+  ListTodo,
 } from 'lucide-react';
 import { cn, formatDate } from '@/lib/utils';
+import { GoogleTasksView } from '@/components/google-tasks-view';
 
 export default function DashboardPage() {
   const [sectors, setSectors] = useState<Sector[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [activeTaskTab, setActiveTaskTab] = useState<'local' | 'google'>('local');
   const [recentNotes, setRecentNotes] = useState<Note[]>([]);
   const [quizAttempts, setQuizAttempts] = useState<QuizAttempt[]>([]);
   const [studySessions, setStudySessions] = useState<StudySession[]>([]);
@@ -409,17 +412,46 @@ export default function DashboardPage() {
           <CardHeader className="flex flex-row items-center justify-between pb-3">
             <div>
               <CardTitle>Today&apos;s Plan &amp; Tasks</CardTitle>
-              <CardDescription>Scheduled practice items and milestones</CardDescription>
+              <CardDescription>Scheduled practice items and live task feeds</CardDescription>
             </div>
-            <Link href="/planner">
-              <Button variant="ghost" size="sm" className="text-xs text-[#6658F5]">
-                <span>Open Planner</span>
-                <ArrowRight className="w-3.5 h-3.5 ml-1" />
-              </Button>
-            </Link>
+            <div className="flex items-center gap-2">
+              <div className="flex bg-[#F0F2FA] p-0.5 rounded-lg text-xs">
+                <button
+                  onClick={() => setActiveTaskTab('local')}
+                  className={cn(
+                    'px-2 py-1 rounded-md text-[11px] font-semibold transition-all cursor-pointer',
+                    activeTaskTab === 'local'
+                      ? 'bg-white text-[#6658F5] shadow-xs'
+                      : 'text-[#718096] hover:text-[#17243D]'
+                  )}
+                >
+                  SkillCentral
+                </button>
+                <button
+                  onClick={() => setActiveTaskTab('google')}
+                  className={cn(
+                    'px-2 py-1 rounded-md text-[11px] font-semibold transition-all cursor-pointer flex items-center gap-1',
+                    activeTaskTab === 'google'
+                      ? 'bg-white text-[#6658F5] shadow-xs'
+                      : 'text-[#718096] hover:text-[#17243D]'
+                  )}
+                >
+                  <ListTodo className="w-3 h-3" />
+                  <span>Google Tasks</span>
+                </button>
+              </div>
+              <Link href="/planner">
+                <Button variant="ghost" size="sm" className="text-xs text-[#6658F5] h-7 px-2">
+                  <span>Planner</span>
+                  <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                </Button>
+              </Link>
+            </div>
           </CardHeader>
           <CardContent className="flex-1 space-y-2.5">
-            {tasks.length === 0 ? (
+            {activeTaskTab === 'google' ? (
+              <GoogleTasksView compact maxItems={4} className="p-0 border-0 shadow-none space-y-2" />
+            ) : tasks.length === 0 ? (
               <p className="text-xs text-[#718096] py-6 text-center">
                 No active tasks. Use Quick Capture to add your first study task!
               </p>

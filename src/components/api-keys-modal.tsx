@@ -49,6 +49,9 @@ export function ApiKeysModal({ isOpen, onClose, onConfigUpdated }: ApiKeysModalP
   const [isTesting, setIsTesting] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  const [hasExistingOAuthClientId, setHasExistingOAuthClientId] = useState(false);
+  const [hasExistingOAuthSecret, setHasExistingOAuthSecret] = useState(false);
+
   const fetchConfig = async () => {
     try {
       const res = await fetch('/api/integrations/config');
@@ -56,7 +59,9 @@ export function ApiKeysModal({ isOpen, onClose, onConfigUpdated }: ApiKeysModalP
       setHasExistingGeminiKey(data.hasGeminiApiKey);
       setMaskedGeminiKey(data.geminiApiKeyMasked || '');
       setSelectedModel(data.geminiModel || 'gemini-3.7-flash');
-      setOauthClientId(data.googleOAuthClientId || '');
+      setHasExistingOAuthClientId(Boolean(data.hasGoogleOAuthClientId));
+      setHasExistingOAuthSecret(Boolean(data.hasGoogleOAuthSecret));
+      setOauthClientId('');
       setEnvFilePath(data.envFilePath || '');
     } catch (e) {
       console.warn('Failed to fetch config:', e);
@@ -276,15 +281,15 @@ export function ApiKeysModal({ isOpen, onClose, onConfigUpdated }: ApiKeysModalP
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input
-              label="OAuth Client ID"
-              placeholder="...apps.googleusercontent.com"
+              label={hasExistingOAuthClientId ? 'OAuth Client ID (Configured)' : 'OAuth Client ID'}
+              placeholder={hasExistingOAuthClientId ? 'Configured in .env.local' : '...apps.googleusercontent.com'}
               value={oauthClientId}
               onChange={(e) => setOauthClientId(e.target.value)}
             />
             <Input
-              label="OAuth Client Secret"
+              label={hasExistingOAuthSecret ? 'OAuth Client Secret (Configured)' : 'OAuth Client Secret'}
               type="password"
-              placeholder="Client secret..."
+              placeholder={hasExistingOAuthSecret ? '••••••••••••••••' : 'Client secret...'}
               value={oauthClientSecret}
               onChange={(e) => setOauthClientSecret(e.target.value)}
             />
