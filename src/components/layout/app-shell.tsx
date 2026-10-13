@@ -7,16 +7,18 @@ import { QuickCaptureModal } from '@/components/quick-capture-modal';
 import { ManageSectorsModal } from '@/components/manage-sectors-modal';
 import { StudyTimerModal } from '@/components/study-timer-modal';
 import { ApiKeysModal } from '@/components/api-keys-modal';
+import { FloatingTimerWidget } from '@/components/floating-timer-widget';
 import { StorageEngine } from '@/lib/storage';
 import { Sector, UserProfile } from '@/types';
 import { X } from 'lucide-react';
+import { useTimer } from '@/context/timer-context';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [sectors, setSectors] = useState<Sector[]>([]);
   const [isQuickCaptureOpen, setIsQuickCaptureOpen] = useState(false);
   const [isManageSectorsOpen, setIsManageSectorsOpen] = useState(false);
-  const [isTimerOpen, setIsTimerOpen] = useState(false);
+  const { isModalOpen: isTimerOpen, openTimerModal, closeTimerModal } = useTimer();
   const [isApiKeysOpen, setIsApiKeysOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -62,7 +64,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="hidden md:flex h-full">
         <Sidebar
           sectors={sectors}
-          onOpenTimer={() => setIsTimerOpen(true)}
+          onOpenTimer={openTimerModal}
           onOpenManageSectors={() => setIsManageSectorsOpen(true)}
         />
       </div>
@@ -87,7 +89,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               sectors={sectors}
               onOpenTimer={() => {
                 setIsMobileMenuOpen(false);
-                setIsTimerOpen(true);
+                openTimerModal();
               }}
               onOpenManageSectors={() => {
                 setIsMobileMenuOpen(false);
@@ -104,7 +106,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <Topbar
           user={user}
           onOpenQuickCapture={() => setIsQuickCaptureOpen(true)}
-          onOpenTimer={() => setIsTimerOpen(true)}
+          onOpenTimer={openTimerModal}
           onOpenMobileMenu={() => setIsMobileMenuOpen(true)}
           onResetDemoData={handleResetDemoData}
           onOpenApiKeys={() => setIsApiKeysOpen(true)}
@@ -139,7 +141,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* Study Focus Timer Modal */}
       <StudyTimerModal
         isOpen={isTimerOpen}
-        onClose={() => setIsTimerOpen(false)}
+        onClose={closeTimerModal}
         sectors={sectors}
         onSessionLogged={() => {
           setRefreshKey((k) => k + 1);
@@ -154,6 +156,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           setRefreshKey((k) => k + 1);
         }}
       />
+
+      {/* Movable & Resizable Floating Timer Dock Widget */}
+      <FloatingTimerWidget sectors={sectors} />
     </div>
   );
 }

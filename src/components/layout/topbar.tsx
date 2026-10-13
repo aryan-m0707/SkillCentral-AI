@@ -16,6 +16,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { UserProfile } from '@/types';
+import { useTimer } from '@/context/timer-context';
+import { formatTime, cn } from '@/lib/utils';
 
 interface TopbarProps {
   user: UserProfile;
@@ -34,6 +36,8 @@ export function Topbar({
   onResetDemoData,
   onOpenApiKeys,
 }: TopbarProps) {
+  const { isRunning, displaySeconds } = useTimer();
+
   return (
     <header className="h-16 bg-white border-b border-[#E6EAF2] px-4 md:px-8 flex items-center justify-between shrink-0 z-20">
       {/* Mobile toggle & Search */}
@@ -79,15 +83,24 @@ export function Topbar({
           </div>
         )}
 
-        {/* Focus Timer Button */}
+        {/* Focus Timer Button with Live Ticker */}
         <Button
           variant="outline"
           size="sm"
           onClick={onOpenTimer}
-          className="hidden sm:inline-flex text-xs text-[#17243D] border-[#E6EAF2] hover:border-[#20C997] hover:text-[#138A67]"
+          className={cn(
+            'hidden sm:inline-flex text-xs transition-all',
+            isRunning
+              ? 'border-[#20C997] bg-[#E6F9F4] text-[#138A67] font-semibold shadow-xs animate-pulse'
+              : 'text-[#17243D] border-[#E6EAF2] hover:border-[#20C997] hover:text-[#138A67]'
+          )}
         >
-          <Timer className="w-3.5 h-3.5 text-[#20C997]" />
-          <span>Timer</span>
+          <Timer className={cn('w-3.5 h-3.5', isRunning ? 'text-[#138A67]' : 'text-[#20C997]')} />
+          <span>
+            {isRunning || displaySeconds !== 25 * 60
+              ? `${formatTime(displaySeconds)}`
+              : 'Timer'}
+          </span>
         </Button>
 
         {/* API Keys Configuration Button */}

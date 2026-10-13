@@ -32,6 +32,8 @@ export const viewport: Viewport = {
   themeColor: "#6658F5",
 };
 
+import { TimerProvider } from "@/context/timer-context";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -40,7 +42,9 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${sora.variable} ${inter.variable}`}>
       <body className="min-h-screen bg-[var(--bg-canvas)] text-[var(--text-primary)] antialiased font-sans selection:bg-[#6658F5]/20 selection:text-[#6658F5]">
-        {children}
+        <TimerProvider>
+          {children}
+        </TimerProvider>
       </body>
     </html>
   );

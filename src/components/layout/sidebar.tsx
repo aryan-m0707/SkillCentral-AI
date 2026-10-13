@@ -16,8 +16,10 @@ import {
 } from 'lucide-react';
 import { Youtube } from '@/components/ui/youtube-icon';
 import { cn } from '@/lib/utils';
-import { Sector } from '@/types';
 import { getSectorIcon } from '@/components/ui/sector-badge';
+import { useTimer } from '@/context/timer-context';
+import { formatTime } from '@/lib/utils';
+import { Sector } from '@/types';
 
 interface SidebarProps {
   sectors?: Sector[];
@@ -28,6 +30,7 @@ interface SidebarProps {
 
 export function Sidebar({ sectors = [], onOpenTimer, onOpenManageSectors, onCloseMobile }: SidebarProps) {
   const pathname = usePathname();
+  const { isRunning, displaySeconds } = useTimer();
 
   const navItems = [
     { href: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -145,19 +148,42 @@ export function Sidebar({ sectors = [], onOpenTimer, onOpenManageSectors, onClos
       <div className="p-4 border-t border-[#F0F2FA] bg-[#F8FAFC]">
         <button
           onClick={onOpenTimer}
-          className="w-full flex items-center justify-between p-3 rounded-xl bg-white border border-[#E6EAF2] hover:border-[#6658F5]/40 hover:shadow-sm transition-all group cursor-pointer"
+          className={cn(
+            'w-full flex items-center justify-between p-3 rounded-xl border transition-all group cursor-pointer',
+            isRunning
+              ? 'bg-[#E6F9F4] border-[#20C997] shadow-xs'
+              : 'bg-white border-[#E6EAF2] hover:border-[#6658F5]/40 hover:shadow-sm'
+          )}
         >
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-[#20C997]/15 text-[#138A67] flex items-center justify-center">
+            <div
+              className={cn(
+                'w-8 h-8 rounded-lg flex items-center justify-center transition-colors',
+                isRunning
+                  ? 'bg-[#20C997] text-white animate-pulse'
+                  : 'bg-[#20C997]/15 text-[#138A67]'
+              )}
+            >
               <Timer className="w-4 h-4" />
             </div>
             <div className="text-left">
               <p className="text-xs font-semibold text-[#17243D]">Focus Timer</p>
-              <p className="text-[10px] text-[#718096]">Log real minutes</p>
+              <p className="text-[10px] text-[#718096]">
+                {isRunning ? 'Session running' : 'Log real minutes'}
+              </p>
             </div>
           </div>
-          <span className="text-[10px] font-bold text-[#6658F5] bg-[#6658F5]/10 px-2 py-1 rounded-md">
-            Start
+          <span
+            className={cn(
+              'text-[10px] font-bold px-2 py-1 rounded-md transition-colors',
+              isRunning
+                ? 'bg-white text-[#138A67] shadow-2xs'
+                : 'text-[#6658F5] bg-[#6658F5]/10'
+            )}
+          >
+            {isRunning || displaySeconds !== 25 * 60
+              ? formatTime(displaySeconds)
+              : 'Start'}
           </span>
         </button>
       </div>
