@@ -39,6 +39,8 @@ export function ApiKeysModal({ isOpen, onClose, onConfigUpdated }: ApiKeysModalP
   const [customModel, setCustomModel] = useState('');
   const [oauthClientId, setOauthClientId] = useState('');
   const [oauthClientSecret, setOauthClientSecret] = useState('');
+  const [hasGoogleOAuthSecret, setHasGoogleOAuthSecret] = useState(false);
+  const [oauthRedirectUri, setOauthRedirectUri] = useState('http://localhost:3000/api/integrations/google-tasks/callback');
 
   const [hasExistingGeminiKey, setHasExistingGeminiKey] = useState(false);
   const [maskedGeminiKey, setMaskedGeminiKey] = useState('');
@@ -57,6 +59,8 @@ export function ApiKeysModal({ isOpen, onClose, onConfigUpdated }: ApiKeysModalP
       setMaskedGeminiKey(data.geminiApiKeyMasked || '');
       setSelectedModel(data.geminiModel || 'gemini-3.7-flash');
       setOauthClientId(data.googleOAuthClientId || '');
+      setHasGoogleOAuthSecret(Boolean(data.hasGoogleOAuthSecret));
+      if (data.googleOAuthRedirectUri) setOauthRedirectUri(data.googleOAuthRedirectUri);
       setEnvFilePath(data.envFilePath || '');
     } catch (e) {
       console.warn('Failed to fetch config:', e);
@@ -263,15 +267,29 @@ export function ApiKeysModal({ isOpen, onClose, onConfigUpdated }: ApiKeysModalP
           </div>
         </div>
 
-        {/* Optional Google OAuth Section */}
+        {/* Google OAuth Section */}
         <div className="pt-2 border-t border-[#F0F2FA] space-y-3">
-          <div>
-            <h4 className="text-xs font-bold text-[#17243D] uppercase tracking-wider">
-              Google Tasks OAuth 2.0 (Optional)
-            </h4>
-            <p className="text-[11px] text-[#718096] mt-0.5">
-              Only required if you want to sync Planner tasks directly to your Google Tasks account.
-            </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h4 className="text-xs font-bold text-[#17243D] uppercase tracking-wider flex items-center gap-1.5">
+                <span>Google Tasks OAuth 2.0</span>
+                {hasGoogleOAuthSecret && (
+                  <Badge variant="mint" className="text-[10px] py-0">Secret Saved</Badge>
+                )}
+              </h4>
+              <p className="text-[11px] text-[#718096] mt-0.5">
+                Required to synchronize Planner tasks with your personal Google Tasks account.
+              </p>
+            </div>
+            <a
+              href="https://console.cloud.google.com/apis/credentials"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[11px] text-[#6658F5] hover:underline flex items-center gap-1"
+            >
+              <span>GCP Console</span>
+              <ExternalLink className="w-3 h-3" />
+            </a>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -282,12 +300,21 @@ export function ApiKeysModal({ isOpen, onClose, onConfigUpdated }: ApiKeysModalP
               onChange={(e) => setOauthClientId(e.target.value)}
             />
             <Input
-              label="OAuth Client Secret"
+              label={hasGoogleOAuthSecret ? "OAuth Client Secret (Already Saved - leave empty to keep)" : "OAuth Client Secret"}
               type="password"
-              placeholder="Client secret..."
+              placeholder={hasGoogleOAuthSecret ? "••••••••••••••••" : "Client secret..."}
               value={oauthClientSecret}
               onChange={(e) => setOauthClientSecret(e.target.value)}
             />
+          </div>
+
+          <div className="p-2.5 bg-[#F6F8FC] border border-[#E6EAF2] rounded-xl text-[11px] text-[#718096] space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="font-semibold text-[#17243D]">Required Authorized Redirect URI:</span>
+            </div>
+            <code className="text-[#6658F5] font-mono select-all block bg-white px-2 py-0.5 rounded border border-[#E6EAF2]">
+              {oauthRedirectUri}
+            </code>
           </div>
         </div>
 

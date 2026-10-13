@@ -67,21 +67,28 @@ function setLocalItem<T>(key: string, data: T): void {
 }
 
 export const StorageEngine = {
-  // Initialization & Demo Data
+  // Initialization & Workspace Data
   initUser(user?: Partial<UserProfile>): UserProfile {
     const existing = getLocalItem<UserProfile | null>(STORAGE_KEYS.USER, null);
-    if (existing) return existing;
+    if (existing) {
+      if (existing.settings?.demoMode) {
+        existing.settings = { ...existing.settings, demoMode: false };
+        setLocalItem(STORAGE_KEYS.USER, existing);
+      }
+      this.seedInitialData(existing.uid);
+      return existing;
+    }
 
     const defaultProfile: UserProfile = {
       uid: user?.uid || DEMO_USER_ID,
-      email: user?.email || 'learner@skillcentral.dev',
+      email: user?.email || 'alex.learner@skillcentral.dev',
       displayName: user?.displayName || 'Alex Learner',
       photoURL: user?.photoURL,
-      isDemoUser: user?.isDemoUser ?? true,
+      isDemoUser: false,
       createdAt: new Date().toISOString(),
       settings: {
         theme: 'light',
-        demoMode: true,
+        demoMode: false,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
       },
       integrations: {
@@ -109,15 +116,11 @@ export const StorageEngine = {
 
   seedInitialData(userId: string): void {
     const sectors = getLocalItem<Sector[]>(STORAGE_KEYS.SECTORS, []);
-    if (sectors.length === 0) {
-      // Auto-create exactly the 5 default sectors on first onboarding
-      const initialSectors = DEFAULT_SECTORS.map((s) => ({
-        ...s,
-        userId,
-      }));
-      setLocalItem(STORAGE_KEYS.SECTORS, initialSectors);
+    const skills = getLocalItem<Skill[]>(STORAGE_KEYS.SKILLS, []);
 
-      // Populate demo assets
+    // Automatically seed rich sample dataset if empty or uninitialized
+    if (sectors.length === 0 || skills.length === 0) {
+      setLocalItem(STORAGE_KEYS.SECTORS, DEMO_SECTORS);
       setLocalItem(STORAGE_KEYS.SKILLS, DEMO_SKILLS);
       setLocalItem(STORAGE_KEYS.TOPICS, DEMO_TOPICS);
       setLocalItem(STORAGE_KEYS.NOTES, DEMO_NOTES);
@@ -130,7 +133,6 @@ export const StorageEngine = {
   },
 
   resetToDemoData(): void {
-    const user = this.getCurrentUser();
     setLocalItem(STORAGE_KEYS.SECTORS, DEMO_SECTORS);
     setLocalItem(STORAGE_KEYS.SKILLS, DEMO_SKILLS);
     setLocalItem(STORAGE_KEYS.TOPICS, DEMO_TOPICS);
@@ -140,7 +142,8 @@ export const StorageEngine = {
     setLocalItem(STORAGE_KEYS.QUIZ_ATTEMPTS, DEMO_QUIZ_ATTEMPTS);
     setLocalItem(STORAGE_KEYS.STUDY_SESSIONS, DEMO_STUDY_SESSIONS);
     setLocalItem(STORAGE_KEYS.ACTIVITY_EVENTS, DEMO_ACTIVITY_EVENTS);
-    this.updateUserProfile({ isDemoUser: true });
+    const user = this.getCurrentUser();
+    this.updateUserProfile({ settings: { ...user.settings, demoMode: false } });
   },
 
   clearAllData(): void {
@@ -157,6 +160,7 @@ export const StorageEngine = {
     setLocalItem(STORAGE_KEYS.STUDY_SESSIONS, []);
     setLocalItem(STORAGE_KEYS.ACTIVITY_EVENTS, []);
     setLocalItem(STORAGE_KEYS.CHAT_SESSIONS, []);
+    this.updateUserProfile({ isDemoUser: false, settings: { ...user.settings, demoMode: false } });
   },
 
   // Sectors CRUD

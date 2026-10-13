@@ -143,43 +143,76 @@ function IntegrationsContent() {
                 variant={status?.googleTasks?.userConnected ? 'mint' : status?.googleTasks?.oauthConfigured ? 'warning' : 'outline'}
               >
                 {status?.googleTasks?.userConnected
-                  ? 'Connected & Authorized'
+                  ? `Connected: ${status?.googleTasks?.userEmail || 'Active'}`
                   : status?.googleTasks?.oauthConfigured
-                  ? 'Keys Configured — Not Signed In'
-                  : 'Keys Missing'}
+                  ? 'Keys Ready — Not Signed In'
+                  : 'OAuth Keys Missing'}
               </Badge>
             </div>
 
             <p className="text-xs text-[#4A5568] leading-relaxed">
-              True server-side authorization-code flow with CSRF protection, secure refresh tokens, and direct push via <code>tasks.insert</code> and <code>tasks.patch</code>.
+              True server-side authorization-code flow with CSRF protection, secure refresh tokens, and direct push/pull synchronization via <code>tasks.insert</code>, <code>tasks.list</code>, and <code>tasks.patch</code>.
             </p>
 
-            <div className="p-3 bg-[#F6F8FC] rounded-xl text-[11px] text-[#718096] space-y-1">
-              <p className="font-semibold text-[#17243D]">OAuth Redirect URI:</p>
-              <code className="text-[#6658F5] select-all bg-white px-2 py-1 rounded border border-[#E6EAF2] block truncate">
-                http://localhost:3000/api/integrations/google-tasks/callback
-              </code>
+            <div className="p-3 bg-[#F6F8FC] rounded-xl text-[11px] text-[#718096] space-y-2">
+              <div>
+                <p className="font-semibold text-[#17243D]">Authorized Redirect URI:</p>
+                <code className="text-[#6658F5] select-all bg-white px-2 py-1 rounded border border-[#E6EAF2] block truncate mt-1">
+                  http://localhost:3000/api/integrations/google-tasks/callback
+                </code>
+              </div>
+              <p className="text-[10px] text-[#718096]">
+                Add this exact URI under <strong>Authorized redirect URIs</strong> in your Google Cloud Console OAuth 2.0 Web Client.
+              </p>
             </div>
           </div>
 
-          <div className="mt-6 pt-4 border-t border-[#F0F2FA] flex justify-end gap-2">
-            {status?.googleTasks?.userConnected ? (
+          <div className="mt-6 pt-4 border-t border-[#F0F2FA] flex flex-wrap items-center justify-end gap-2">
+            {!status?.googleTasks?.oauthConfigured ? (
               <Button
-                variant="outline"
+                variant="primary"
                 size="sm"
-                onClick={handleDisconnectGoogleTasks}
-                isLoading={disconnecting}
-                className="text-rose-600 border-rose-200 hover:bg-rose-50"
+                onClick={() => setIsApiKeysModalOpen(true)}
+                className="text-xs"
               >
-                Disconnect Tasks
+                <Key className="w-3.5 h-3.5" />
+                <span>Configure OAuth Keys</span>
               </Button>
-            ) : (
-              <a href="/api/integrations/google-tasks/connect">
-                <Button variant="primary" size="sm">
-                  <PlugZap className="w-3.5 h-3.5" />
-                  <span>Connect with Google Tasks</span>
+            ) : status?.googleTasks?.userConnected ? (
+              <>
+                <a href="/planner">
+                  <Button variant="outline" size="sm" className="text-xs">
+                    <span>Manage Tasks in Planner</span>
+                  </Button>
+                </a>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDisconnectGoogleTasks}
+                  isLoading={disconnecting}
+                  className="text-rose-600 border-rose-200 hover:bg-rose-50 text-xs"
+                >
+                  Disconnect Tasks
                 </Button>
-              </a>
+              </>
+            ) : (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsApiKeysModalOpen(true)}
+                  className="text-xs"
+                >
+                  <Key className="w-3.5 h-3.5" />
+                  <span>Update Keys</span>
+                </Button>
+                <a href="/api/integrations/google-tasks/connect">
+                  <Button variant="primary" size="sm" className="text-xs">
+                    <PlugZap className="w-3.5 h-3.5" />
+                    <span>Connect with Google Tasks</span>
+                  </Button>
+                </a>
+              </>
             )}
           </div>
         </Card>
@@ -199,8 +232,8 @@ function IntegrationsContent() {
                   <p className="text-xs text-[#718096]">Official @google/genai SDK</p>
                 </div>
               </div>
-              <Badge variant={status?.gemini?.configured ? 'mint' : 'demo'}>
-                {status?.gemini?.configured ? 'Live API Connected' : 'Demo Fallback Active'}
+              <Badge variant={status?.gemini?.configured ? 'mint' : 'outline'}>
+                {status?.gemini?.configured ? 'Live API Connected' : 'API Key Not Configured'}
               </Badge>
             </div>
 

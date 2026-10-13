@@ -51,8 +51,8 @@ export async function GET(req: NextRequest) {
 
     const response = NextResponse.redirect(destinationUrl);
 
-    // Save tokens in secure HTTP-only cookie
-    response.cookies.set('google_tasks_tokens', JSON.stringify(tokens), {
+    // Save tokens and userEmail in secure HTTP-only cookie
+    response.cookies.set('google_tasks_tokens', JSON.stringify({ ...tokens, userEmail }), {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',

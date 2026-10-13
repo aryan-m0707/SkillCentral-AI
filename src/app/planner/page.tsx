@@ -22,6 +22,8 @@ import {
   Calendar,
   AlertCircle,
   Filter,
+  Download,
+  Upload,
 } from 'lucide-react';
 import { cn, formatDate } from '@/lib/utils';
 
@@ -41,10 +43,16 @@ export default function PlannerPage() {
   const [newDueDate, setNewDueDate] = useState('');
   const [newTimeStart, setNewTimeStart] = useState('09:00');
   const [newTimeEnd, setNewTimeEnd] = useState('10:00');
+  const [syncOnCreate, setSyncOnCreate] = useState(true);
 
   // Google Tasks Integration State
   const [googleTasksConnected, setGoogleTasksConnected] = useState(false);
+  const [googleAccountEmail, setGoogleAccountEmail] = useState<string | null>(null);
+  const [tasklists, setTasklists] = useState<Array<{ id: string; title: string }>>([]);
+  const [selectedTasklistId, setSelectedTasklistId] = useState<string>('@default');
   const [syncingTaskId, setSyncingTaskId] = useState<string | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
+  const [isBatchSyncing, setIsBatchSyncing] = useState(false);
   const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
 
   const loadData = () => {
@@ -61,7 +69,28 @@ export default function PlannerPage() {
     fetch('/api/integrations/status')
       .then((r) => r.json())
       .then((d) => {
-        setGoogleTasksConnected(Boolean(d.googleTasks?.userConnected));
+        const isConnected = Boolean(d.googleTasks?.userConnected);
+        setGoogleTasksConnected(isConnected);
+        setGoogleAccountEmail(d.googleTasks?.userEmail || null);
+
+        if (isConnected) {
+          // Fetch Google Tasks task lists
+          fetch('/api/integrations/google-tasks/sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'list_tasklists' }),
+          })
+            .then((res) => res.json())
+            .then((listData) => {
+              if (Array.isArray(listData.tasklists) && listData.tasklists.length > 0) {
+                setTasklists(listData.tasklists);
+                if (selectedTasklistId === '@default') {
+                  setSelectedTasklistId(listData.tasklists[0].id || '@default');
+                }
+              }
+            })
+            .catch((err) => console.warn('Failed to load tasklists:', err));
+        }
       })
       .catch(() => setGoogleTasksConnected(false));
   };
@@ -74,7 +103,7 @@ export default function PlannerPage() {
     const isCompleted = task.status === 'completed';
     const nextStatus = isCompleted ? 'todo' : 'completed';
 
-    const updated = StorageEngine.saveTask({
+    StorageEngine.saveTask({
       id: task.id,
       title: task.title,
       sectorId: task.sectorId,
@@ -92,7 +121,7 @@ export default function PlannerPage() {
           body: JSON.stringify({
             action: 'patch_task',
             taskId: task.externalTaskId,
-            tasklistId: task.externalListId || '@default',
+            tasklistId: task.externalListId || selectedTasklistId || '@default',
             completed: !isCompleted,
           }),
         });
@@ -102,11 +131,11 @@ export default function PlannerPage() {
     }
   };
 
-  const handleCreateTask = (e: React.FormEvent) => {
+  const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim()) return;
 
-    StorageEngine.saveTask({
+    const createdLocal = StorageEngine.saveTask({
       title: newTitle.trim(),
       details: newDetails.trim() || undefined,
       sectorId: newSectorId || sectors[0]?.id || 'sec-academics',
@@ -117,15 +146,63 @@ export default function PlannerPage() {
       status: 'todo',
     });
 
+    // Auto-sync to Google Tasks if connected and toggle checked
+    if (googleTasksConnected && syncOnCreate) {
+      try {
+        const res = await fetch('/api/integrations/google-tasks/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'push_task',
+            tasklistId: selectedTasklistId,
+            task: {
+              title: createdLocal.title,
+              details: createdLocal.details,
+              dueDate: createdLocal.dueDate,
+            },
+          }),
+        });
+        const data = await res.json();
+        if (res.ok && data.externalTaskId) {
+          StorageEngine.saveTask({
+            ...createdLocal,
+            externalTaskId: data.externalTaskId,
+            externalListId: data.externalListId,
+          });
+          setSyncFeedback(`Saved & synced "${createdLocal.title}" to Google Tasks!`);
+          setTimeout(() => setSyncFeedback(null), 3000);
+        }
+      } catch (syncErr) {
+        console.warn('Auto-push to Google Tasks failed:', syncErr);
+      }
+    }
+
     setNewTitle('');
     setNewDetails('');
     setIsAddingTask(false);
     loadData();
   };
 
-  const handleDeleteTask = (id: string) => {
+  const handleDeleteTask = async (id: string) => {
+    const taskToDelete = tasks.find((t) => t.id === id);
     StorageEngine.deleteTask(id);
     loadData();
+
+    if (taskToDelete?.externalTaskId && googleTasksConnected) {
+      try {
+        await fetch('/api/integrations/google-tasks/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'delete_task',
+            taskId: taskToDelete.externalTaskId,
+            tasklistId: taskToDelete.externalListId || selectedTasklistId || '@default',
+          }),
+        });
+      } catch (e) {
+        console.warn('Google Tasks deletion failed:', e);
+      }
+    }
   };
 
   // Push individual task to Google Tasks
@@ -138,6 +215,7 @@ export default function PlannerPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'push_task',
+          tasklistId: selectedTasklistId,
           task: {
             title: task.title,
             details: task.details,
@@ -157,7 +235,7 @@ export default function PlannerPage() {
         title: task.title,
         sectorId: task.sectorId,
         externalTaskId: data.externalTaskId,
-        externalListId: data.externalListId,
+        externalListId: data.externalListId || selectedTasklistId,
       });
 
       setSyncFeedback(`Pushed "${task.title}" to Google Tasks!`);
@@ -166,6 +244,118 @@ export default function PlannerPage() {
       setSyncFeedback(`Error: ${err.message}`);
     } finally {
       setSyncingTaskId(null);
+      setTimeout(() => setSyncFeedback(null), 4000);
+    }
+  };
+
+  // Import tasks from Google Tasks
+  const handleImportFromGoogleTasks = async () => {
+    setIsImporting(true);
+    setSyncFeedback(null);
+    try {
+      const res = await fetch('/api/integrations/google-tasks/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'list_tasks',
+          tasklistId: selectedTasklistId,
+          showCompleted: true,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to retrieve tasks from Google');
+
+      const currentTasks = StorageEngine.getTasks();
+      const existingExternalIds = new Set(currentTasks.map((t) => t.externalTaskId).filter(Boolean));
+      let importedCount = 0;
+
+      if (Array.isArray(data.tasks)) {
+        for (const gt of data.tasks) {
+          if (!gt.title || existingExternalIds.has(gt.id)) continue;
+
+          let dueDateStr: string | undefined = undefined;
+          if (gt.due) {
+            dueDateStr = gt.due.split('T')[0];
+          }
+
+          StorageEngine.saveTask({
+            title: gt.title,
+            details: gt.notes || undefined,
+            dueDate: dueDateStr,
+            status: gt.status === 'completed' ? 'completed' : 'todo',
+            sectorId: sectors[0]?.id || 'sec-academics',
+            priority: 'medium',
+            externalTaskId: gt.id,
+            externalListId: selectedTasklistId,
+          });
+          importedCount++;
+        }
+      }
+
+      setSyncFeedback(
+        importedCount > 0
+          ? `Imported ${importedCount} task(s) from Google Tasks into your Planner!`
+          : 'Google Tasks are all already up-to-date in your Planner.'
+      );
+      loadData();
+    } catch (err: any) {
+      setSyncFeedback(`Import error: ${err.message}`);
+    } finally {
+      setIsImporting(false);
+      setTimeout(() => setSyncFeedback(null), 4000);
+    }
+  };
+
+  // Push all unsynced tasks to Google Tasks
+  const handlePushAllUnsynced = async () => {
+    const unsynced = tasks.filter((t) => !t.externalTaskId);
+    if (unsynced.length === 0) {
+      setSyncFeedback('All tasks in your Planner are already synced with Google Tasks!');
+      setTimeout(() => setSyncFeedback(null), 3000);
+      return;
+    }
+
+    setIsBatchSyncing(true);
+    setSyncFeedback(null);
+    try {
+      const res = await fetch('/api/integrations/google-tasks/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'batch_push',
+          tasklistId: selectedTasklistId,
+          tasks: unsynced.map((t) => ({
+            id: t.id,
+            title: t.title,
+            details: t.details,
+            dueDate: t.dueDate,
+          })),
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Batch sync failed');
+
+      if (Array.isArray(data.results)) {
+        for (const item of data.results) {
+          const existing = tasks.find((t) => t.id === item.id);
+          if (existing) {
+            StorageEngine.saveTask({
+              ...existing,
+              externalTaskId: item.externalTaskId,
+              externalListId: item.externalListId,
+            });
+          }
+        }
+      }
+
+      setSyncFeedback(`Successfully synced ${data.count || 0} task(s) to Google Tasks!`);
+      loadData();
+    } catch (err: any) {
+      setSyncFeedback(`Batch sync error: ${err.message}`);
+    } finally {
+      setIsBatchSyncing(false);
       setTimeout(() => setSyncFeedback(null), 4000);
     }
   };
@@ -202,20 +392,67 @@ export default function PlannerPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          {/* Google Tasks Connection Banner */}
-          <Link href="/integrations">
-            <Button
-              variant={googleTasksConnected ? 'mint' : 'outline'}
-              size="sm"
-              className="text-xs"
-            >
-              <PlugZap className="w-3.5 h-3.5" />
-              <span>
-                {googleTasksConnected ? 'Google Tasks Connected' : 'Connect Google Tasks'}
-              </span>
-            </Button>
-          </Link>
+        <div className="flex flex-wrap items-center gap-2.5">
+          {googleTasksConnected ? (
+            <>
+              {tasklists.length > 1 && (
+                <select
+                  value={selectedTasklistId}
+                  onChange={(e) => setSelectedTasklistId(e.target.value)}
+                  className="px-2.5 py-1.5 bg-white border border-[#E6EAF2] rounded-xl text-xs text-[#17243D] focus:outline-none focus:border-[#6658F5]"
+                  title="Target Google Tasks list"
+                >
+                  {tasklists.map((tl) => (
+                    <option key={tl.id} value={tl.id}>
+                      {tl.title}
+                    </option>
+                  ))}
+                </select>
+              )}
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleImportFromGoogleTasks}
+                isLoading={isImporting}
+                className="text-xs text-[#17243D]"
+                title="Download tasks from your Google Tasks account into Planner"
+              >
+                <Download className="w-3.5 h-3.5 text-[#6658F5]" />
+                <span>Import from Google</span>
+              </Button>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handlePushAllUnsynced}
+                isLoading={isBatchSyncing}
+                className="text-xs text-[#17243D]"
+                title="Push all local unsynced tasks to Google Tasks"
+              >
+                <Upload className="w-3.5 h-3.5 text-[#20C997]" />
+                <span>Push Unsynced</span>
+              </Button>
+
+              <Link href="/integrations">
+                <Badge variant="mint" className="py-1 px-2.5 text-xs font-medium cursor-pointer">
+                  <PlugZap className="w-3 h-3" />
+                  <span>{googleAccountEmail ? googleAccountEmail.split('@')[0] : 'Connected'}</span>
+                </Badge>
+              </Link>
+            </>
+          ) : (
+            <Link href="/integrations">
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-xs text-[#6658F5] border-[#6658F5]/30 hover:bg-[#6658F5]/10"
+              >
+                <PlugZap className="w-3.5 h-3.5 text-[#6658F5]" />
+                <span>Connect Google Tasks</span>
+              </Button>
+            </Link>
+          )}
 
           <Button variant="primary" size="sm" onClick={() => setIsAddingTask(true)}>
             <Plus className="w-4 h-4" />
@@ -343,13 +580,32 @@ export default function PlannerPage() {
               onChange={(e) => setNewDetails(e.target.value)}
             />
 
-            <div className="flex justify-end gap-2 pt-2 border-t border-[#F0F2FA]">
-              <Button type="button" variant="outline" size="sm" onClick={() => setIsAddingTask(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" variant="primary" size="sm">
-                Save Task
-              </Button>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-2 border-t border-[#F0F2FA]">
+              {googleTasksConnected ? (
+                <label className="flex items-center gap-2 text-xs text-[#17243D] cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={syncOnCreate}
+                    onChange={(e) => setSyncOnCreate(e.target.checked)}
+                    className="w-4 h-4 rounded border-[#E6EAF2] text-[#6658F5] focus:ring-[#6658F5] cursor-pointer"
+                  />
+                  <span className="font-medium flex items-center gap-1.5">
+                    <PlugZap className="w-3.5 h-3.5 text-[#6658F5]" />
+                    <span>Sync to Google Tasks immediately</span>
+                  </span>
+                </label>
+              ) : (
+                <span />
+              )}
+
+              <div className="flex items-center gap-2 self-end">
+                <Button type="button" variant="outline" size="sm" onClick={() => setIsAddingTask(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" variant="primary" size="sm">
+                  Save Task
+                </Button>
+              </div>
             </div>
           </form>
         </Card>

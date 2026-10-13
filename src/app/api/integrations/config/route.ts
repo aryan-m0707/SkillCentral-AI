@@ -36,7 +36,7 @@ function writeEnvFile(updates: Record<string, string>) {
     `GOOGLE_OAUTH_CLIENT_ID=${merged.GOOGLE_OAUTH_CLIENT_ID || ''}`,
     `GOOGLE_OAUTH_CLIENT_SECRET=${merged.GOOGLE_OAUTH_CLIENT_SECRET || ''}`,
     `GOOGLE_OAUTH_REDIRECT_URI=${merged.GOOGLE_OAUTH_REDIRECT_URI || 'http://localhost:3000/api/integrations/google-tasks/callback'}`,
-    `DEMO_MODE=${merged.DEMO_MODE || 'true'}`,
+    `DEMO_MODE=${merged.DEMO_MODE || 'false'}`,
   ];
 
   if (merged.GOOGLE_CLOUD_PROJECT) lines.push(`GOOGLE_CLOUD_PROJECT=${merged.GOOGLE_CLOUD_PROJECT}`);
@@ -63,7 +63,8 @@ export async function GET() {
     geminiModel: process.env.GEMINI_MODEL || env.GEMINI_MODEL || 'gemini-3.7-flash',
     googleOAuthClientId: process.env.GOOGLE_OAUTH_CLIENT_ID || env.GOOGLE_OAUTH_CLIENT_ID || '',
     hasGoogleOAuthSecret: Boolean(process.env.GOOGLE_OAUTH_CLIENT_SECRET || env.GOOGLE_OAUTH_CLIENT_SECRET),
-    demoMode: process.env.DEMO_MODE !== 'false',
+    googleOAuthRedirectUri: process.env.GOOGLE_OAUTH_REDIRECT_URI || env.GOOGLE_OAUTH_REDIRECT_URI || 'http://localhost:3000/api/integrations/google-tasks/callback',
+    demoMode: process.env.DEMO_MODE === 'true',
     envFilePath: ENV_PATH,
   });
 }
@@ -76,6 +77,7 @@ export async function POST(req: NextRequest) {
       geminiModel,
       googleOAuthClientId,
       googleOAuthClientSecret,
+      googleOAuthRedirectUri,
       testConnection,
     } = body;
 
@@ -90,6 +92,9 @@ export async function POST(req: NextRequest) {
     }
     if (typeof googleOAuthClientSecret === 'string' && googleOAuthClientSecret.trim()) {
       updates.GOOGLE_OAUTH_CLIENT_SECRET = googleOAuthClientSecret.trim();
+    }
+    if (typeof googleOAuthRedirectUri === 'string' && googleOAuthRedirectUri.trim()) {
+      updates.GOOGLE_OAUTH_REDIRECT_URI = googleOAuthRedirectUri.trim();
     }
 
     // If user requested connection test

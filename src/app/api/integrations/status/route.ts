@@ -4,7 +4,16 @@ import { isGoogleOAuthConfigured } from '@/lib/server/google-tasks';
 import { getFirebaseAdminApp } from '@/lib/server/firebase-admin';
 
 export async function GET(req: NextRequest) {
-  const hasTokens = Boolean(req.cookies.get('google_tasks_tokens')?.value);
+  const tokensCookie = req.cookies.get('google_tasks_tokens')?.value;
+  const hasTokens = Boolean(tokensCookie);
+  let userEmail: string | null = null;
+  if (tokensCookie) {
+    try {
+      const parsed = JSON.parse(tokensCookie);
+      userEmail = parsed.userEmail || null;
+    } catch {}
+  }
+
   const geminiConfigured = isGeminiConfigured();
   const oauthConfigured = isGoogleOAuthConfigured();
   const firebaseAdmin = Boolean(getFirebaseAdminApp());
@@ -19,6 +28,7 @@ export async function GET(req: NextRequest) {
     googleTasks: {
       oauthConfigured,
       userConnected: hasTokens,
+      userEmail,
       status: hasTokens ? 'connected' : oauthConfigured ? 'ready_to_connect' : 'missing_oauth_keys',
     },
     firebase: {

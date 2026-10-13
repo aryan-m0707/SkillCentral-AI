@@ -125,3 +125,48 @@ export async function updateGoogleTaskStatus(
   });
   return res.data;
 }
+
+/**
+ * Lists tasks in a specific Google Tasks list
+ */
+export async function listGoogleTasks(
+  tokens: any,
+  tasklistId: string = '@default',
+  showCompleted: boolean = true
+) {
+  const tasksService = getGoogleTasksService(tokens);
+  const res = await tasksService.tasks.list({
+    tasklist: tasklistId,
+    showCompleted,
+    showHidden: false,
+    maxResults: 100,
+  });
+  return res.data.items || [];
+}
+
+/**
+ * Deletes a task from Google Tasks
+ */
+export async function deleteGoogleTask(
+  tokens: any,
+  tasklistId: string = '@default',
+  taskId: string
+) {
+  const tasksService = getGoogleTasksService(tokens);
+  await tasksService.tasks.delete({
+    tasklist: tasklistId,
+    task: taskId,
+  });
+  return { success: true };
+}
+
+/**
+ * Creates a new task list in Google Tasks
+ */
+export async function createGoogleTaskList(tokens: any, title: string) {
+  const tasksService = getGoogleTasksService(tokens);
+  const res = await tasksService.tasklists.insert({
+    requestBody: { title },
+  });
+  return res.data;
+}

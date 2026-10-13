@@ -5,10 +5,9 @@ import { AppShell } from '@/components/layout/app-shell';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { StorageEngine } from '@/lib/storage';
 import { UserProfile } from '@/types';
-import { Settings, User, RotateCcw, Trash2, CheckCircle2, ShieldAlert, Key, Sparkles } from 'lucide-react';
+import { Settings, User, Trash2, CheckCircle2, Key, Sparkles, RotateCcw } from 'lucide-react';
 import { ApiKeysModal } from '@/components/api-keys-modal';
 
 export default function SettingsPage() {
@@ -16,7 +15,6 @@ export default function SettingsPage() {
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
   const [timezone, setTimezone] = useState('');
-  const [demoMode, setDemoMode] = useState(true);
   const [savedStatus, setSavedStatus] = useState<string | null>(null);
   const [isApiKeysModalOpen, setIsApiKeysModalOpen] = useState(false);
 
@@ -26,7 +24,6 @@ export default function SettingsPage() {
     setDisplayName(u.displayName || '');
     setEmail(u.email || '');
     setTimezone(u.settings?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone);
-    setDemoMode(u.settings?.demoMode ?? true);
   }, []);
 
   const handleSaveProfile = (e: React.FormEvent) => {
@@ -37,7 +34,7 @@ export default function SettingsPage() {
       email: email.trim(),
       settings: {
         ...user.settings,
-        demoMode,
+        demoMode: false,
         timezone,
       },
     });
@@ -45,8 +42,8 @@ export default function SettingsPage() {
     setTimeout(() => setSavedStatus(null), 3000);
   };
 
-  const handleResetDemoData = () => {
-    if (window.confirm('Reset all sectors, notes, and tasks back to the 14-day sample demo dataset?')) {
+  const handlePopulateSampleData = () => {
+    if (window.confirm('Populate the full 14-day sample dataset with notes, flashcards, tasks, and quizzes?')) {
       StorageEngine.resetToDemoData();
       window.location.reload();
     }
@@ -55,7 +52,7 @@ export default function SettingsPage() {
   const handleClearAllData = () => {
     if (
       window.confirm(
-        'Are you sure you want to completely erase all data? This will reset all sectors and clear your vault.'
+        'Are you sure you want to erase all local data? This will reset your workspace and clear all notes, tasks, and sessions.'
       )
     ) {
       StorageEngine.clearAllData();
@@ -75,7 +72,7 @@ export default function SettingsPage() {
             <span>Settings &amp; Preferences</span>
           </h2>
           <p className="text-sm text-[#718096] mt-1">
-            Manage your personal profile, local storage state, and demo configuration
+            Manage your personal profile, local storage workspace, and integrations
           </p>
         </div>
       </div>
@@ -157,20 +154,20 @@ export default function SettingsPage() {
           </Card>
 
           <Card className="p-6 space-y-4">
-            <CardTitle className="text-base">Demo Data Controls</CardTitle>
+            <CardTitle className="text-base">Workspace Data Controls</CardTitle>
             <CardDescription>
-              Toggle or reset the 14-day sample dataset designed for live hackathon judging walkthroughs
+              Manage your local storage workspace, erase notes, tasks, and history to start completely fresh
             </CardDescription>
 
             <div className="space-y-3 pt-2">
               <Button
                 variant="outline"
                 size="sm"
-                onClick={handleResetDemoData}
-                className="w-full text-xs"
+                onClick={handlePopulateSampleData}
+                className="w-full text-xs text-[#6658F5] hover:bg-purple-50/50 border-[#6658F5]/30"
               >
-                <RotateCcw className="w-3.5 h-3.5 text-amber-600" />
-                <span>Reset 14-Day Sample Demo Data</span>
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Populate Full 14-Day Sample Dataset</span>
               </Button>
 
               <Button
@@ -180,7 +177,7 @@ export default function SettingsPage() {
                 className="w-full text-xs text-rose-600 hover:bg-rose-50 border-rose-200"
               >
                 <Trash2 className="w-3.5 h-3.5" />
-                <span>Clear All Data &amp; Start Blank</span>
+                <span>Clear Workspace &amp; Start Fresh</span>
               </Button>
             </div>
           </Card>

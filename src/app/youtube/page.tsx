@@ -228,8 +228,8 @@ function YouTubeStudioContent() {
         </div>
 
         {analysisStatus && (
-          <Badge variant={analysisStatus === 'live' ? 'mint' : 'demo'}>
-            {analysisStatus === 'live' ? 'Gemini 3.7 Flash Live Analysis' : 'DEMO MODE FALLBACK'}
+          <Badge variant={analysisStatus === 'live' ? 'mint' : 'outline'}>
+            {analysisStatus === 'live' ? 'Gemini 3.7 Flash Live Analysis' : 'Offline Simulation Preview'}
           </Badge>
         )}
       </div>
